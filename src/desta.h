@@ -20,8 +20,9 @@
 
 int check_firmware(int);
 void die(const char[]);
-void nsdigest(char *digest, char *data_buf, int data_len);
+void nsdigest(unsigned char *digest, char *data_buf, int data_len);
+int print_digest_x(unsigned char *digest, size_t len);
+int print_digest(unsigned char *digest);
 
 
-#endif
-
+#endif // _DESTA_H_

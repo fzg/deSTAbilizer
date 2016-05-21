@@ -2,7 +2,7 @@
 
 
 int usage(const char *pn) {
-  return printf("usage: %s firm.bin\n");
+  return printf("usage: %s firm.bin\n", pn);
 }
 
 void die(const char str[]) {
@@ -10,7 +10,7 @@ void die(const char str[]) {
   exit(errno);
 }
 
-int main(int c, const char **v) {
+int main(int c, const char *v[]) {
   if (c < 2) return usage(v[0]);
 
   int fd, err;  fd = err = 0;
