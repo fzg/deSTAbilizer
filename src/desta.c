@@ -8,14 +8,14 @@
 #define SWAP32(x) do { uint32_t tmp = (htonl((x))); (x) = tmp;} while(0)
 
 void swap_mdul_endianness(mdul_hdr_t *it) {
-  if (VERB) puts("swap_mdul_endianness");
+  if (gV > 1) puts("swap_mdul_endianness");
   SWAP32(it->m_len);
   SWAP32(it->m_cksum);
   SWAP32(it->hdr_len);
 }
 
 void swap_endianness(frm_hdr_t *it) {
-  if (VERB) puts("swap_endianness");
+  if (gV > 1) puts("swap_endianness");
   SWAP32(it->fm_hdr_len);
   SWAP32(it->fm_len);
   SWAP32(it->mdul_hdr_len);
@@ -24,18 +24,85 @@ void swap_endianness(frm_hdr_t *it) {
   SWAP32(it->slic_type);
 }
 
-int  check_mdul_hdr(mdul_hdr_t *m) {
-  int err = 0;
+
+static int mdul_hdr_md5(int fd, mdul_hdr_t *m) {
+  if (gV > 1) puts("mdul_hdr_md5");
+
+  unsigned char digest[0x10];
   unsigned char buf[16384];
+
+  MD5_CTX context;
+  __uint32_t len, range, err = 0;
+
+  MD5_Init(&context);
+  len = m->m_len;
+  if (m->digest[12] <= 0) err = 1;
+  while (!err && len > 0) {
+    range = len >= 0x4000? 0x4000 : len;
+    len -= range;
+    if (range != read(fd, &buf, range)) {
+      err = 1;
+      printf("Error reading %d bytes\n", range);
+      die("read");
+    }
+    else MD5_Update(&context, buf, range);
+  }
+
+  MD5_Final(digest, &context);
+  if (memcmp(digest, m->digest, 0x10)) die("module digest mismatch!");
+  puts("module digest is good");
+  return 0;
+}
+
+int  check_mdul_hdr(int fd, mdul_hdr_t *m) {
+  if (gV > 1) puts("check_mdul_hdr");
+
+  int err = 0, red;
   mdul_hdr_t bak;
+  char *it;
+
   memcpy(&bak, m, 0x80);
   swap_mdul_endianness(&bak);
+  if (bak.hdr_len > 65536)
+    die("invalid module header length");
+  if (!(it = malloc(bak.hdr_len)))
+    die("malloc failed");
+  if ((red = read(fd, it, bak.hdr_len)) != bak.hdr_len)
+    die("read error!");
 
+  __uint32_t cmp_cksum, hdr_cksum;
+  unsigned char magic[4] = {0};
+
+  memcpy(&magic, (void*)(&module_magics[0]) + bak.type -1, 4);
+
+  hdr_cksum = ((mdul_hdr_t*)it)->hdr_cksum;
+  ((mdul_hdr_t*)it)->hdr_cksum = 0;
+  for (unsigned char inc = 0, cmp_cksum = 0; inc != 128;++inc) cmp_cksum += *(it + inc);
+  ((mdul_hdr_t*)it)->hdr_cksum = hdr_cksum;
+
+  if (bak.hdr_cksum == cmp_cksum || 1) {
+    if (bak.type >= 9 || magic == 0) {
+      err = mdul_hdr_md5(fd, &bak);
+      puts("good module md5 digest");
+    }
+    else { // magic != 0 || type <= 9
+      unsigned short x;
+      for (x = 0; magic[x] && magic[x] == bak.magic[x] && x < 4; ++x);
+        if (x != 4) {
+          puts("module magic is wrong!");
+          err = 1;
+        }
+        else {
+          puts("good module magic!");
+          err = mdul_hdr_md5(fd, &bak);}
+    }
+  }
+  free(it);
   return err;
 }
 
 int check_fmhdr(char *b, ssize_t len) {
-  if (VERB) puts("check_fmhdr");
+  if (gV > 1) puts("check_fmhdr");
 
 
   MD5_CTX context;
@@ -83,7 +150,7 @@ int check_firmware(int fd) {
    char     *filebuf;
    ssize_t   red, filesize, err;
 
-   if (VERB) puts("check_firmware");
+   if (gV > 1) puts("check_firmware");
 
    memset((char*)&it, 0, sizeof(it));
    memset((char*)&bkp, 0, sizeof(bkp));
@@ -107,7 +174,7 @@ int check_firmware(int fd) {
    if (red + 136 != filesize+sizeof(bkp)) {
      die("oops2");
    }
-   if (VERB)
+   if (gV > 1)
     printf("We got %d modules weighing %d bytes and a %d bytes header. Total Header size: %ld bytes\n",
      it.num_mduls, it.mdul_hdr_len, it.fm_hdr_len, filesize+sizeof(it));
   if (it.num_mduls > 20 || it.mdul_hdr_len > 0x1000 || it.fm_hdr_len > 0x1000)
@@ -116,9 +183,13 @@ int check_firmware(int fd) {
    if (!(err = check_fmhdr(filebuf, filesize+sizeof(it)))) {
      mdul_hdr_t * mdl;
      for (int i = 0; i < it.num_mduls && !err; ++i) {
-       mdl = (mdul_hdr_t*) filebuf + it.fm_hdr_len + i * it.mdul_hdr_len;
-       err = check_mdul_hdr(mdl);
+       if (gV > 1) printf("\n\n--- MODULE %d ---\n",i);
+       whereami(fd);
+       mdl = (mdul_hdr_t*) (filebuf + it.fm_hdr_len + (i * it.mdul_hdr_len));
+       err = check_mdul_hdr(fd, mdl);
+	
      }
    }
+   free(filebuf);
    return err;
 }

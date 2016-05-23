@@ -6,19 +6,22 @@
 
 #define FIRM_MAGIC ((const char*)"PAYTOND FiRmWaRe")
 
+
+extern unsigned char module_magics[];
+
 typedef struct mdul_hdr_s {
-  __int32_t zero;
-  __int32_t magic;
-  __int32_t type;
-  __int32_t instance;
-  __int32_t res;
+  unsigned char zero[4];
+  unsigned char magic[4];
+  unsigned char type;
+  unsigned char instance;
+  unsigned char res[2];
   __int32_t hdr_len;
-  __int32_t digest;
+  unsigned char digest[0x10];
   __int32_t m_len;
-  __int32_t m_cksum;
-  __int32_t m_version;
-  __int32_t res_2;
-  __int32_t hdr_checksum;
+  __uint32_t m_cksum;
+  unsigned char m_version[0x20];
+  unsigned char res_2[52];
+  __int32_t hdr_cksum;
 } mdul_hdr_t;
 
 typedef struct frm_hdr_s {

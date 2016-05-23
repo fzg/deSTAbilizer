@@ -16,13 +16,17 @@
 
 #define VERB 2 //verbosity
 
+extern char gV, *gIn;
+
+#include "arg_parser.h"
 #include "fmt.h"
+#include "util.h"
 
 int check_firmware(int);
 void die(const char[]);
 void nsdigest(unsigned char *digest, char *data_buf, int data_len);
 int print_digest_x(unsigned char *digest, size_t len);
 int print_digest(unsigned char *digest);
-
+int whereami(int fd);
 
 #endif // _DESTA_H_

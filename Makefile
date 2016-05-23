@@ -1,7 +1,7 @@
-SRC= main.c desta.c util.c
+SRC= main.c desta.c util.c fmt.c arg_parser.c opts.c
 PRG= deSTAbilizer
 CC = gcc
-CFLAGS =  --std=c99 -gdwarf-4 -g2 -Wall
+CFLAGS =  --std=c99 -gdwarf-4 -g2 -Wall -D_DEFAULT_SOURCE -D_BSD_SOURCE
 LDFLAGS = -lcrypto -lssl
 
 SRCDIR = src
@@ -17,6 +17,6 @@ $(PRG) : $(OBJ)
 	$(CC) $(CFLAGS) -o $(PRG) $(OBJ) $(LDFLAGS)
 
 clean:
-	-rm $(OBJ) $(PRG)
+	-@rm $(OBJ) $(PRG)
 
 re   : clean $(PRG)
