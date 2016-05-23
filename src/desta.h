@@ -16,12 +16,14 @@
 
 #define VERB 2 //verbosity
 
-extern char gV, *gIn;
+extern char gV, *gIn, *gOut, gMode;
 
 #include "arg_parser.h"
 #include "fmt.h"
 #include "util.h"
+#include "ops.h"
 
+int usage();
 int check_firmware(int);
 void die(const char[]);
 void nsdigest(unsigned char *digest, char *data_buf, int data_len);

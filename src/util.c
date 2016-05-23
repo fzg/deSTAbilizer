@@ -117,3 +117,15 @@ void nsdigest(unsigned char *digest, char *data_buf, int data_len) {
   }
   MD5_Final(digest, &md5ctx);
 }
+
+
+int prepare_output_dir() {
+  DIR *d;
+  int fd;
+
+  if (!(d = opendir(gOut)) && (errno != ENOENT)) die("Preparing output dir:");
+  if ((fd = mkdir(gOut, S_IXUSR | S_IWUSR | S_IRUSR)) == -1) die("Creating output dir:");
+  if (gV > 1) puts("Created output directory");
+
+  return fd;
+}

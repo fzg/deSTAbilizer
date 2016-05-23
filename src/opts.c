@@ -3,7 +3,8 @@
 #include <netdb.h>
 #include <string.h>
 
-#include "util.h"
+#include "desta.h"
+//#include "util.h"
 
 //#include "ops.h"
 //#include "fortunes.h"
@@ -21,6 +22,22 @@ int setInputFile(char **p) {
   xstrdup(&gIn, *p);
   return 0;
 }
+
+int setOutputFile(char **p) {
+  xstrdup(&gOut, *p);
+  return 0;
+}
+
+int setDump(char **p) {
+  gMode |= OPT_DUMP;
+  return 0;
+}
+
+int setBuild(char **p) {
+  gMode |= OPT_BUILD;
+  return 0;
+}
+
 
 int setOverrideDefaults(char **p) {
   return 0;

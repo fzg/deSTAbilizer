@@ -7,12 +7,16 @@ extern char gV;
 
 t_arg args[] = {
 {0, 0, &setVerbosity, 0, "-v"},
-{1, 0, &setInputFile, 0, "in"}
+{1, 0, &setInputFile, 0, "-i"},
+{1, 0, &setOutputFile, 0, "-o"},
+{0, 0, &setDump, 0, "--dump"},
+{0, 0, &setBuild, 0, "--build"}
+
 };
 
 t_default_arg defaults[] = {
 {ARG(1), 0, "firm.bin"},
-//{ARG(2), 0, "admin"},
+{ARG(2), 0, "baked.bin"},
 //{ARG(2), 1, "admin"},
 //{ARG(12), 0, "127.0.0.1"},
 //{ARG(12), 1, "8080"}

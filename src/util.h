@@ -6,6 +6,10 @@
 #endif
 
 #include <stdarg.h>
+       #include <sys/types.h>
+       #include <dirent.h>
+
+
 
 void xfree(char **);
 void *xmalloc(void **, size_t);

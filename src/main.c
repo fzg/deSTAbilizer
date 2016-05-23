@@ -1,10 +1,12 @@
 #include "desta.h"
 
-char gV = 0;
-char *gIn = 0;
-
-int usage(const char *pn) {
-  return printf("usage: %s [-v] in firm.bin\n", pn);
+char gV = 0, gMode = OPT_CHECK;
+char *gIn = 0, *gOut = 0;
+const char *__progname = 0;
+int usage() {
+  return printf("usage: %s [-v] [--dump|--build] -i in [-o] out\n\n \
+   --dump takes an input file and an output directory\n \
+   --build takes an input directory and an output file\n", __progname);
 }
 
 void die(const char str[]) {
@@ -13,17 +15,20 @@ void die(const char str[]) {
 }
 
 int main(int c, const char *v[]) {
-  int fd, err;  fd = err = 0;
+  int err = 0;
 
+  __progname = v[0];
   err = parse_args(c, v);
 
-  if (!gIn) return usage(v[0]);
+  if (!gIn) return usage();
 
-  if ((fd = open(gIn, O_RDONLY)) == -1) {
-   printf("Opening %s: %s", gIn, strerror(errno));
+  if (gMode == OPT_CHECK) {  // neither --dump nor --build, just check
+    err = opCheck();
   }
-  err = check_firmware(fd);
-  cleanup();
-  return(close(fd));
+  if (gMode & OPT_DUMP) {
+    err = opDump();
+  }
+ cleanup();
+ return err;
 }
 
