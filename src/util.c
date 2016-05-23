@@ -9,6 +9,12 @@
 
 //extern char gV;
 
+int xclose(int *fd) {
+  int err = close(*fd);
+  if (!err) *fd = 0;
+  return err;
+}
+
 void xfree(char **b) {
   if (!*b) return;
   free(*b); *b = NULL;

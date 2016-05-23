@@ -15,6 +15,7 @@ void xfree(char **);
 void *xmalloc(void **, size_t);
 void xstrdup(char **, const char *);
 void xsleep(int n);
+int xclose(int *fd);
 int max(int a, int b);
 
 void cleanup();

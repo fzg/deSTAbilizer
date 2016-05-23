@@ -6,7 +6,7 @@ license WTFPL
 Checks, extracts, replaces parts from some networking devices' firmwares.
 
 
-TODO:
+TODO/ONGOING:
   1. recognize
 
      -> map module types / magic numbers to blob types

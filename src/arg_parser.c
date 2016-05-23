@@ -11,7 +11,8 @@ t_arg args[] = {
 {1, 0, &setOutputFile, 0, "-o"},
 {0, 0, &setDump, 0, "--dump"},
 {0, 0, &setBuild, 0, "--build"},
-{0, 0, &setForcefullness, 0, "-f"}
+{0, 0, &setForcefullness, 0, "-f"},
+{0, 0, &setSplitHdr, 0, "-s"}
 };
 
 t_default_arg defaults[] = {

@@ -6,8 +6,7 @@
 -> Add extract / replace module
 -> Script to edit fs
 
--> finish implementing --dump -o [modules_dir]
-
 -> implement --build -i [modules_dir] -o [upgrade_img]
 
 -> finish implementing -f
+   ( it doesn't refuse to overwrite when no -f given )

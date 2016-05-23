@@ -24,15 +24,53 @@ void swap_endianness(frm_hdr_t *it) {
   SWAP32(it->slic_type);
 }
 
+int curDumpFd = 0, curHdrDumpFd = 0;
+
+int currentDumpFd() {
+  static int lastcurDumpFd = 0;
+  int fd;
+
+  if (!MUST_SPLIT_HDR) return curDumpFd;
+  fd = (!curDumpFd || curDumpFd == lastcurDumpFd)? curHdrDumpFd: curDumpFd;
+  if (curDumpFd != lastcurDumpFd) {
+   puts("bim"); // just for dbg
+  }
+  lastcurDumpFd = curDumpFd;
+  return fd;
+}
+
+
+void createDumpFd(mdul_hdr_t *m) {
+  int fd;
+  mode_t M =  O_CREAT | S_IRWXU;
+  M |=  (gF) ? O_TRUNC : O_EXCL;
+  char name[] = "x.out";
+  name[0] = m->type+'0';
+  if ((fd = creat(name, M)) == -1) die("creating output file");
+  printf("curDumpFd: %d\n", fd);
+  curDumpFd = fd;
+  if (MUST_SPLIT_HDR) {
+    name[1] = '-';
+    if ((fd = creat(name, M)) == -1) die("creating output file");
+    printf("curHdrDumpFd: %d\n", fd);
+    curHdrDumpFd = fd;
+  }
+}
+
+
+static void dump_header(char *buf, int len) {
+  write(currentDumpFd(), buf, len);
+}
+
 
 static int mdul_hdr_md5(int fd, mdul_hdr_t *m) {
   if (gV > 1) puts("mdul_hdr_md5");
 
   unsigned char digest[0x10];
   unsigned char buf[16384];
-
+  unsigned char *optr;
   MD5_CTX context;
-  __uint32_t len, range, err = 0;
+  __uint32_t len, range, err = 0, towrite, skip=0;
 
   MD5_Init(&context);
   len = m->m_len;
@@ -45,7 +83,18 @@ static int mdul_hdr_md5(int fd, mdul_hdr_t *m) {
       printf("Error reading %d bytes\n", range);
       die("read");
     }
-    else MD5_Update(&context, buf, range);
+    else {
+      MD5_Update(&context, buf, range);
+      if (MUST_DUMP) {
+        towrite = range - skip;
+        optr = buf + skip;
+        if ( range > skip ) {
+          skip = 0;
+          write(currentDumpFd(), optr, towrite);
+        } else skip -= range;
+        //
+      }
+    }
   }
 
   MD5_Final(digest, &context);
@@ -57,9 +106,6 @@ static int mdul_hdr_md5(int fd, mdul_hdr_t *m) {
 int  check_mdul_hdr(int fd, mdul_hdr_t *m) {
   if (gV > 1) puts("check_mdul_hdr");
   if (MUST_DUMP) puts("WILL DUMP");
-  /* TODO: - write routine to create outputfile and fail if not -f and already exists
-   *       - write routine to write to outputfile skipping offset and call it if header is good
-   */
 
   int err = 0, red;
   mdul_hdr_t bak;
@@ -73,6 +119,9 @@ int  check_mdul_hdr(int fd, mdul_hdr_t *m) {
     die("malloc failed");
   if ((red = read(fd, it, bak.hdr_len)) != bak.hdr_len)
     die("read error!");
+
+
+  if (MUST_DUMP) dump_header(it, bak.hdr_len);
 
   __uint32_t cmp_cksum, hdr_cksum;
   unsigned char magic[4] = {0};
@@ -105,14 +154,12 @@ int  check_mdul_hdr(int fd, mdul_hdr_t *m) {
   return err;
 }
 
+
 int check_fmhdr(char *b, ssize_t len) {
   if (gV > 1) puts("check_fmhdr");
 
-
   MD5_CTX context;
   frm_t *buf = (frm_t *) b;
-
-//  swap_endianness(&buf->h);
 
   unsigned char cmp_digest[0x10] = {0},    hdr_digest[0x10];
   unsigned char cmp_signature[0x20] = {0}, hdr_signature[0x20];
@@ -188,6 +235,12 @@ int check_firmware(int fd) {
      mdul_hdr_t * mdl;
      for (int i = 0; i < it.num_mduls && !err; ++i) {
        if (gV > 1) printf("\n\n--- MODULE %d ---\n",i);
+       if (MUST_DUMP) {
+         if (curDumpFd) xclose(&curDumpFd);
+         if (MUST_SPLIT_HDR && curHdrDumpFd) xclose(&curHdrDumpFd);
+         currentDumpFd(); // to reset inner variable
+         createDumpFd(mdl);
+       }
        whereami(fd);
        mdl = (mdul_hdr_t*) (filebuf + it.fm_hdr_len + (i * it.mdul_hdr_len));
        err = check_mdul_hdr(fd, mdl);

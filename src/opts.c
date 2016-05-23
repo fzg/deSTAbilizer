@@ -43,6 +43,11 @@ int setBuild(char **p) {
   return 0;
 }
 
+int setSplitHdr(char **p) {
+  gMode |= OPT_SPLIT_HDR;
+  return 0;
+}
+
 
 int setOverrideDefaults(char **p) {
   return 0;
