@@ -122,9 +122,13 @@ void nsdigest(unsigned char *digest, char *data_buf, int data_len) {
 int prepare_output_dir() {
   DIR *d;
   int fd;
-
+//  if ((fd = openat(AT_FDCWD, gOut,  O_CREAT | O_DIRECTORY, S_IXUSR | S_IWUSR | S_IRUSR)) == -1) die("openat");
   if (!(d = opendir(gOut)) && (errno != ENOENT)) die("Preparing output dir:");
-  if ((fd = mkdir(gOut, S_IXUSR | S_IWUSR | S_IRUSR)) == -1) die("Creating output dir:");
+  if ((fd = mkdir(gOut, S_IXUSR | S_IWUSR | S_IRUSR)) == -1 && errno != EEXIST) die("Creating output dir:");
+  if (errno == EEXIST) {
+	// check here for -f ?
+	if ((fd = chdir(gOut))) die("Changing directory");
+  }
   if (gV > 1) puts("Created output directory");
 
   return fd;

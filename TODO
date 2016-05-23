@@ -1,3 +1,13 @@
 -> List modules types.
+
+-> (fix checksum in mdl_hdr?) <- low priority since we abort on magic mismatch or digest mismatch
+
+
 -> Add extract / replace module
 -> Script to edit fs
+
+-> finish implementing --dump -o [modules_dir]
+
+-> implement --build -i [modules_dir] -o [upgrade_img]
+
+-> finish implementing -f

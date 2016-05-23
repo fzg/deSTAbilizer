@@ -18,6 +18,11 @@ int setVerbosity(char **p) {
   return 0;
 }
 
+int setForcefullness(char **p) {
+  ++gF;
+  return 0;
+}
+
 int setInputFile(char **p) {
   xstrdup(&gIn, *p);
   return 0;

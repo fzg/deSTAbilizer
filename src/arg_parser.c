@@ -10,8 +10,8 @@ t_arg args[] = {
 {1, 0, &setInputFile, 0, "-i"},
 {1, 0, &setOutputFile, 0, "-o"},
 {0, 0, &setDump, 0, "--dump"},
-{0, 0, &setBuild, 0, "--build"}
-
+{0, 0, &setBuild, 0, "--build"},
+{0, 0, &setForcefullness, 0, "-f"}
 };
 
 t_default_arg defaults[] = {

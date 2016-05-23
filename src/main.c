@@ -1,6 +1,6 @@
 #include "desta.h"
 
-char gV = 0, gMode = OPT_CHECK;
+char gF = 0, gV = 0, gMode = OPT_CHECK;
 char *gIn = 0, *gOut = 0;
 const char *__progname = 0;
 int usage() {

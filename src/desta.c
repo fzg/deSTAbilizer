@@ -56,6 +56,10 @@ static int mdul_hdr_md5(int fd, mdul_hdr_t *m) {
 
 int  check_mdul_hdr(int fd, mdul_hdr_t *m) {
   if (gV > 1) puts("check_mdul_hdr");
+  if (MUST_DUMP) puts("WILL DUMP");
+  /* TODO: - write routine to create outputfile and fail if not -f and already exists
+   *       - write routine to write to outputfile skipping offset and call it if header is good
+   */
 
   int err = 0, red;
   mdul_hdr_t bak;
