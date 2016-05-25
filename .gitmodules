@@ -1,0 +1,9 @@
+[submodule "ext/u-boot"]
+	path = ext/u-boot
+	url = git://git.denx.de/u-boot.git
+[submodule "ext/sasquatch"]
+	path = ext/sasquatch
+	url = https://github.com/devttys0/sasquatch
+[submodule "ext/romfsck2"]
+	path = ext/romfsck2
+	url = https://github.com/JordanMilne/romfsck2.git
