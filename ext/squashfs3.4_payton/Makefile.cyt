@@ -1,0 +1,28 @@
+
+Sqlzma := $(SRCBASE)/host_tools/gpl_src/sqlzma
+
+export LzmaVer := lzma457
+export Lzma := ${Sqlzma}/${LzmaVer}
+export KVer := linux-2.6.27.4
+export SqFs := ${Squashfs}/kernel-patches/${KVer}/fs/squashfs
+
+ifeq (${LzmaVer}, lzma443)
+export LzmaC := ${Lzma}/C/7zip/Compress/LZMA_C
+export LzmaAlone := ${Lzma}/C/7zip/Compress/LZMA_Alone
+else
+export LzmaC := ${Lzma}/C/Compress/Lzma
+export LzmaAlone := ${Lzma}/CPP/7zip/Compress/LZMA_Alone
+endif
+
+all:
+	make -C squashfs-tools $@ Sqlzma=$(Sqlzma)
+	install -m 755 squashfs-tools/mksquashfs $(SRCBASE)/host_tools/
+
+clean:
+	-make -C squashfs-tools $@ Sqlzma=$(Sqlzma)
+	-rm $(SRCBASE)/host_tools/mksquashfs
+
+install:
+
+.PHONY: all clean install
+
