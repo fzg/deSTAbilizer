@@ -23,6 +23,8 @@ INSERTONEND:
 
 */
 
+#include "crc.c"
+
 #define NVRAM_BASE 0xc0
 #define NVRAM_KEYSTORE_OFF (20 + NVRAM_BASE)
 
@@ -34,6 +36,22 @@ static void xputs(const char *str, const char sep) {
   putchar('\n');
 }
 
+uint8_t compute_crc(char *buffer, size_t length) {
+  if (strncmp(buffer, "HSLF", 4)) {
+    printf("Bad magic\n abort\n");
+  }
+  u_short last_entry = *(u_short *)(buffer+4);
+  u_short rounded = (last_entry+3) & 0xFFFFFFFC;
+  printf("Rounded %d to %d\n", *(u_short *)(buffer+4), rounded);
+  uint8_t comp = *(uint8_t *)(buffer+8);
+  uint8_t final = 256;
+  uint8_t crc = hndcrc8(buffer+9, 11, 255);
+  uint8_t c2c = hndcrc8(buffer+20, rounded-20, ((crc << 16) & 0xFF0000) >> 16);
+  final |= c2c;
+  printf("Computed crc: %d vs in file: %d\n", final, comp);
+  return final;
+}
+
 static char _nvram_set(char *buffer, size_t length, const char *key, const char *value) {
   size_t key_len, len;
   u_short last_used = *(u_short *)(buffer + 0xc4);
@@ -43,8 +61,10 @@ static char _nvram_set(char *buffer, size_t length, const char *key, const char 
   unsigned char keyval_count = (unsigned char)buffer[0xc8];
   char *ptr = buffer + NVRAM_KEYSTORE_OFF, *tmp = NULL, *tmploc = NULL;
 
+  uint8_t my_crc = compute_crc(buffer+NVRAM_BASE, 0x8000);
 
-  printf("tail is %s(%d) with %d values\n", buffer+last_used, last_used, keyval_count);
+
+  printf("tail is %s(%d) with CRC=%d\n", buffer+last_used, last_used, keyval_count);
   printf("10 before tail is %s\n", buffer+last_used-10);
 
   if (!value) {
@@ -87,20 +107,21 @@ static char _nvram_set(char *buffer, size_t length, const char *key, const char 
     }
   }
   printf("Note: couldn't find %s=%s inside NVRAM!\nAppening new value\n", key, value);
-  buffer[0xc8] += 1;
-
-  return (1);
+//  buffer[0xc8] += 1; Is not number of entries but crc8!
+//    buffer[0xc8] = compute_crc(buffer+NVRAM_BASE, 0x8000);
 INSERTONEND:
+   ptr = buffer + last_used;
+   
   while (ptr - buffer < length) {
-    len = strlen(ptr);
+    len = strlen(ptr); // a simplifier
     if (!len) {
       printf("At end we have %xd vs 0x8000\n", ptr - buffer + strlen(key) + strlen(value) + 2);
       if (ptr - buffer + strlen(key) + strlen(value) + 2 <= length) {
         strcpy(ptr, key); *(ptr+strlen(key)) = '='; strcpy(ptr+strlen(key)+1, value);
-        last_used += ( strlen(key)+1+strlen(value));
-        *(u_short *)(buffer + 0xc4) = last_used;
+        last_used += ( strlen(key)+2+strlen(value));
+        *(u_short *)(buffer + 0xc4) = last_used - 186;
 
-        return(1);
+        return(0);
       } else {
          printf("Error, couldn't fit moved %s=%s inside NVRAM! Copying back old value\n", key, value); // so copy back
          strcpy(tmploc, tmp);
@@ -112,7 +133,11 @@ INSERTONEND:
 }
 
 void nvram_set(char *buffer, const char *key, const char *value) {
- _nvram_set(buffer, 0x8000, key, value);
+ if (!_nvram_set(buffer, 0x8000, key, value))
+    buffer[0xc8] = compute_crc(buffer+NVRAM_BASE, 0x8000);
+ else {
+//  puts("\n\nBAD SET\n\n");
+  }
 }
 
 
@@ -147,12 +172,20 @@ int main() {
 // nvram_set(buf, "new_val", "1");
 // puts("changing value with same size");
 // nvram_set(buf, "locale", "FR");
- puts("changing value with bigger size");
+// puts("changing value with bigger size");
 // nvram_set(buf, "rip_flush", "123456");
-// nvram_set(buf, "new_val", "1");
+ nvram_set(buf, "new_val", "1");
+ nvram_set(buf, "nothing", 0);
 
- oof = open("out2.cfg", O_WRONLY|O_CREAT);
-// encode(buf, 0x8000);
+ oof = open("out.cfg", O_WRONLY|O_CREAT);
+ encode(buf, 0x8000);
  write(oof, buf, 0x8000);
+ close(oof);
+ close(iif);
+ iif = open("out.cfg", O_RDONLY);
+ read(iif, buf, 0x8000);
+ decode(buf, 0x8000);
+ nvram_set(buf, "nothing", 0);
+// write(oof, buf, 0x8000);
 }
 #endif
