@@ -23,17 +23,25 @@ INSERTONEND:
 
 */
 
+#include "desta.h"
 #include "crc.c"
 
 #define NVRAM_BASE 0xc0
 #define NVRAM_KEYSTORE_OFF (20 + NVRAM_BASE)
 
-
+/*
 static void xputs(const char *str, const char sep) {
   static off_t pos;
   pos = strchr(str, sep) - str;
   for (off_t i = 0; i < pos;++i) putchar(str[i]);
   putchar('\n');
+}
+*/
+
+int verify_crc(char *buffer, size_t length) {
+  uint8_t file = *(uint8_t *)(buffer+8);
+  uint8_t comp = compute_crc(buffer, length);
+  return (!(comp == file));
 }
 
 uint8_t compute_crc(char *buffer, size_t length) {
@@ -42,13 +50,13 @@ uint8_t compute_crc(char *buffer, size_t length) {
   }
   u_short last_entry = *(u_short *)(buffer+4);
   u_short rounded = (last_entry+3) & 0xFFFFFFFC;
-  printf("Rounded %d to %d\n", *(u_short *)(buffer+4), rounded);
+  if (gV > 2) printf("Rounded %d to %d\n", *(u_short *)(buffer+4), rounded);
   uint8_t comp = *(uint8_t *)(buffer+8);
-  uint8_t final = 256;
-  uint8_t crc = hndcrc8(buffer+9, 11, 255);
-  uint8_t c2c = hndcrc8(buffer+20, rounded-20, ((crc << 16) & 0xFF0000) >> 16);
+  unsigned char final = 0;
+  uint8_t crc = hndcrc8((unsigned char *)buffer+9, 11, 255);
+  uint8_t c2c = hndcrc8((unsigned char *)buffer+20, rounded-20, ((crc << 16) & 0xFF0000) >> 16);
   final |= c2c;
-  printf("Computed crc: %d vs in file: %d\n", final, comp);
+  if (gV > 1) printf("Computed crc: %d (value previously in file: %d)\n", final, comp);
   return final;
 }
 
@@ -62,10 +70,11 @@ static char _nvram_set(char *buffer, size_t length, const char *key, const char 
   char *ptr = buffer + NVRAM_KEYSTORE_OFF, *tmp = NULL, *tmploc = NULL;
 
   uint8_t my_crc = compute_crc(buffer+NVRAM_BASE, 0x8000);
+  uint8_t file_crc = *(uint8_t *)(buffer+NVRAM_BASE+8);
+  if (my_crc != file_crc) die("CRC mismatch! Aborting.");
 
-
-  printf("tail is %s(%d) with CRC=%d\n", buffer+last_used, last_used, keyval_count);
-  printf("10 before tail is %s\n", buffer+last_used-10);
+  if (gV > 2) printf("tail is %s(%d) with CRC=%d\n", buffer+last_used, last_used, keyval_count);
+  if (gV > 2) printf("10 before tail is %s\n", buffer+last_used-10);
 
   if (!value) {
     printf("Warning: attempted to add key %s without value!\n Not doing anything.\n", key);
@@ -84,7 +93,7 @@ static char _nvram_set(char *buffer, size_t length, const char *key, const char 
       len = strlen(ptr); // skip the value
       ptr += len + 1;
     } else { // got a key match :)
-      printf("key matched! %s, %s -> %s\n", key, ptr, value);
+      if (gV > 3) printf("key matched! %s, %s -> %s\n", key, ptr, value);
       ptr += key_len + 1;
       if (strcmp(value, ptr)) { //
         if (strlen(ptr) != strlen(value)) {
@@ -96,7 +105,7 @@ static char _nvram_set(char *buffer, size_t length, const char *key, const char 
           memmove(ptr, ptr + strlen(ptr)+1, last_used - (NVRAM_KEYSTORE_OFF + (buffer - ptr)+strlen(ptr))); // compress
           last_used -= strlen(ptr); // update tail
           memset(ptr+last_used, 0, strlen(ptr));
-          puts("goto INSERTONEND");
+          if (gV > 3) puts("goto INSERTONEND");
           goto INSERTONEND;
         } else {
           memset(ptr, 0, strlen(ptr));
@@ -106,16 +115,16 @@ static char _nvram_set(char *buffer, size_t length, const char *key, const char 
       } return (0);
     }
   }
-  printf("Note: couldn't find %s=%s inside NVRAM!\nAppening new value\n", key, value);
+  if (gV > 2) printf("Note: couldn't find %s=%s inside NVRAM!\nAppening new value\n", key, value);
 //  buffer[0xc8] += 1; Is not number of entries but crc8!
 //    buffer[0xc8] = compute_crc(buffer+NVRAM_BASE, 0x8000);
 INSERTONEND:
    ptr = buffer + last_used;
-   
+
   while (ptr - buffer < length) {
     len = strlen(ptr); // a simplifier
     if (!len) {
-      printf("At end we have %xd vs 0x8000\n", ptr - buffer + strlen(key) + strlen(value) + 2);
+      if (gV > 3) printf("At end we have %ld vs 0x8000\n", ptr - buffer + strlen(key) + strlen(value) + 2);
       if (ptr - buffer + strlen(key) + strlen(value) + 2 <= length) {
         strcpy(ptr, key); *(ptr+strlen(key)) = '='; strcpy(ptr+strlen(key)+1, value);
         last_used += ( strlen(key)+2+strlen(value));
@@ -124,7 +133,7 @@ INSERTONEND:
         return(0);
       } else {
          printf("Error, couldn't fit moved %s=%s inside NVRAM! Copying back old value\n", key, value); // so copy back
-         strcpy(tmploc, tmp);
+         strcpy(tmploc, tmp); // actually we could abort since we're not ondevice but heh aftertought
          return (1);
       }
     } else ptr += strlen(ptr) + 1;  // skip entries
@@ -132,12 +141,12 @@ INSERTONEND:
   return (0);
 }
 
-void nvram_set(char *buffer, const char *key, const char *value) {
- if (!_nvram_set(buffer, 0x8000, key, value))
+int nvram_set(char *buffer, const char *key, const char *value) {
+ if (!_nvram_set(buffer, 0x8000, key, value)) {
     buffer[0xc8] = compute_crc(buffer+NVRAM_BASE, 0x8000);
- else {
-//  puts("\n\nBAD SET\n\n");
-  }
+    return 0;
+ }
+ return -1;
 }
 
 
@@ -159,7 +168,7 @@ char *decode(char *buf, int size) {
  return buf;
 }
 
-#if 1
+#if 0
 int main() {
  char buf[0x8000];
  int iif, oof;

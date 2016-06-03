@@ -11,7 +11,7 @@
 
 #define SZ(p) (sizeof(p)/sizeof(typeof(p)))
 
-extern char *gIn, gV;
+extern char *gIn, gV, *gOut, *gCfg;
 
 int setVerbosity(char **p) {
   ++gV;
@@ -43,6 +43,12 @@ int setBuild(char **p) {
   return 0;
 }
 
+int setCfg(char **p) {
+  xstrdup(&gCfg, *p);
+  gMode |= OPT_CFG;
+  return 0;
+}
+
 int setSplitHdr(char **p) {
   gMode |= OPT_SPLIT_HDR;
   return 0;
@@ -50,6 +56,21 @@ int setSplitHdr(char **p) {
 
 
 int setOverrideDefaults(char **p) {
+  return 0;
+}
+
+int setCkConf(char **p) {
+  gMode |= OPT_CKCONF;
+  return 0;
+}
+
+int setNoEncode(char **p) {
+  gMode |= OPT_NOENC;
+  return 0;
+}
+
+int setNoDecode(char **p) {
+  gMode |= OPT_NODEC;
   return 0;
 }
 

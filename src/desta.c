@@ -92,7 +92,6 @@ static int mdul_hdr_md5(int fd, mdul_hdr_t *m) {
           skip = 0;
           write(currentDumpFd(), optr, towrite);
         } else skip -= range;
-        //
       }
     }
   }

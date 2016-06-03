@@ -3,7 +3,9 @@
 
 int opCheck();
 int opDump();
+int opCfg();
 int opBuild();
+int opCkConf();
 
 #endif //_OPS_H_
 

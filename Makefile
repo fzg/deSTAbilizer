@@ -1,4 +1,4 @@
-SRC= main.c desta.c util.c fmt.c arg_parser.c opts.c ops.c
+SRC= main.c desta.c util.c fmt.c arg_parser.c opts.c ops.c config_codec.c
 PRG= deSTAbilizer
 CC = gcc
 CFLAGS =  --std=c99 -gdwarf-4 -g2 -Wall -D_DEFAULT_SOURCE -D_BSD_SOURCE

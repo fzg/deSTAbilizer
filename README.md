@@ -5,6 +5,9 @@ license WTFPL
 
 Checks, extracts, replaces parts from some networking devices' firmwares.
 
+Also allows to set/edit NVRAM variables from configuration backup.
+
+
 various licenses for code in ext :)
 ext/squashfs-3.4 comes from the payton gpl sourcebase (fork of squashfs with LZMA)
 

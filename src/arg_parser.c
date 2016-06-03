@@ -12,12 +12,15 @@ t_arg args[] = {
 {0, 0, &setDump, 0, "--dump"},
 {0, 0, &setBuild, 0, "--build"},
 {0, 0, &setForcefullness, 0, "-f"},
-{0, 0, &setSplitHdr, 0, "-s"}
+{0, 0, &setSplitHdr, 0, "-s"},
+{1, 0, &setCfg, 0, "--cfg"},
+{0, 0, &setNoDecode, 0, "--no-decode"},
+{0, 0, &setNoEncode, 0, "--no-encode"}
 };
 
 t_default_arg defaults[] = {
 {ARG(1), 0, "firm.bin"},
-{ARG(2), 0, "baked.bin"},
+{ARG(2), 0, "baked.bin"}
 //{ARG(2), 1, "admin"},
 //{ARG(12), 0, "127.0.0.1"},
 //{ARG(12), 1, "8080"}
@@ -123,7 +126,7 @@ int	parse_args(int c, const char **v) {
  i = err = 0;
  while((!err || err == 200) && i < c - 1) {
   i += (n = parse_arg(v, i+1, &err));
-  if (gV) printf("[ParseArgs]\t%s\t\terr=%d\targ=%d\n", v[i-n+1], err, i);
+  if (gV > 1) printf("[ParseArgs]\t%s\t\terr=%d\targ=%d\n", v[i-n+1], err, i);
  }
  return err;
 }
