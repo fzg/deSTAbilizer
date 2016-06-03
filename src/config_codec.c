@@ -37,14 +37,18 @@ static void xputs(const char *str, const char sep) {
 static char _nvram_set(char *buffer, size_t length, const char *key, const char *value) {
   size_t key_len, len;
   u_short last_used = *(u_short *)(buffer + 0xc4);
-  last_used -= (0x10 + 0x10 - 7);//FIXME triple-check
+  last_used += 186;
+
+//  last_used -= (0x10 + 0x10 - 7 - 0x1f);//FIXME triple-check
   unsigned char keyval_count = (unsigned char)buffer[0xc8];
   char *ptr = buffer + NVRAM_KEYSTORE_OFF, *tmp = NULL, *tmploc = NULL;
 
 
-  printf("tail is %s(%d) with %d values\n", ptr+last_used, last_used, keyval_count);
+  printf("tail is %s(%d) with %d values\n", buffer+last_used, last_used, keyval_count);
+  printf("10 before tail is %s\n", buffer+last_used-10);
+
   if (!value) {
-    printf("Warning: attempted to add key %s without value!\n Not doing anything.\n");
+    printf("Warning: attempted to add key %s without value!\n Not doing anything.\n", key);
     return(1);
   }
 
@@ -138,13 +142,16 @@ int main() {
  iif = open("in.cfg", O_RDONLY);
  read(iif, buf, 0x8000);
  decode(buf, 0x8000);
+ nvram_set(buf, "nothing", 0);
 // puts("adding new value");
 // nvram_set(buf, "new_val", "1");
 // puts("changing value with same size");
 // nvram_set(buf, "locale", "FR");
-// puts("changing value with bigger size");
+ puts("changing value with bigger size");
 // nvram_set(buf, "rip_flush", "123456");
- oof = open("out.cfg", O_WRONLY|O_CREAT);
+// nvram_set(buf, "new_val", "1");
+
+ oof = open("out2.cfg", O_WRONLY|O_CREAT);
 // encode(buf, 0x8000);
  write(oof, buf, 0x8000);
 }
