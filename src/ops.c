@@ -1,3 +1,5 @@
+#include <sys/stat.h>
+
 #include "desta.h"
 #include "ops.h"
 
@@ -42,7 +44,7 @@ int opCfg() {
   char buf[0x8000], *value;
 
   if (gV > 0) puts("[cfg]\t\tSetting nvram variable");
-  if ((in_fd = open(gIn, O_RDONLY)) == -1) die("Opening input file");
+  if ((in_fd = open(gCfg, O_RDONLY)) == -1) die("Opening input file");
   if ((err = read(in_fd, buf, 0x8000)) != 0x8000) die("Couldn't read enough bytes!");
   if (!(value = strchr(gCfg, '='))) die("Must provide key=value!");
   *value = 0;
@@ -57,13 +59,26 @@ int opCfg() {
 
 int opCkConf() {
   int in_fd, err;
-  char buf[0x8000];
-  if (gV > 0) puts("[cfg]\t\tChecking NVRAM CRC");
-  if ((in_fd = open(gIn, O_RDONLY)) == -1) die("Opening input file");
-  if ((err = read(in_fd, buf, 0x8000)) != 0x8000) die("Couldn't read enough bytes!");
-  if (!(gMode & OPT_NODEC)) { if (gV) puts("Decoding"); decode(buf, 0x8000); }
-  if ((err = verify_crc(buf, 0x8000))) die("CRC mismatch! Flash this at your own risk!");
-  if (gV > 0) puts("[cfg]\t\tAll good!");
+  char *buf;
 
+  struct stat s;
+
+  if ((in_fd = open(gCfg, O_RDONLY)) == -1) die("Opening input file");
+  if ((fstat(in_fd, &s))) die("Stat'ing config file");
+
+
+  if (!(buf = malloc(s.st_size))) die("Allocating for config file failed;");
+
+  if (gV > 0) printf("[cfg]\t\tChecking NVRAM CRC %s\n", gCfg);
+
+  if ((err = read(in_fd, buf, s.st_size)) != s.st_size) die("Couldn't read enough bytes!");
+  if ((err = fixfile(buf, s.st_size))) die ("File CRC mismatch! Router will reject your file.");
+
+  if (!(gMode & OPT_NODEC)) { if (gV) puts("Decoding"); decode(buf, 0x8000); } else {
+   if (gV) puts("Warning: no decode!\n");
+  }
+  if ((err = verify_crc(buf, 0x8000))) die("Config CRC mismatch! Flash this at your own risk!");
+  if (gV > 0) puts("[cfg]\t\tAll good!");
+  free(buf);
   return err;
 }

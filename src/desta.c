@@ -40,6 +40,7 @@ int currentDumpFd() {
 }
 
 
+// we init curdumpfd and curhdrdumpfd here
 void createDumpFd(mdul_hdr_t *m) {
   int fd;
   mode_t M =  O_CREAT | S_IRWXU;
@@ -106,11 +107,11 @@ int  check_mdul_hdr(int fd, mdul_hdr_t *m) {
   if (gV > 1) puts("check_mdul_hdr");
   if (MUST_DUMP) puts("WILL DUMP");
 
-  int err = 0, red;
+  int err = 0, red = 0;
   mdul_hdr_t bak;
-  char *it;
+  char *it = NULL;
 
-  memcpy(&bak, m, 0x80);
+  memcpy(&bak, m, sizeof(bak));
   swap_mdul_endianness(&bak);
   if (bak.hdr_len > 65536)
     die("invalid module header length");
@@ -233,17 +234,18 @@ int check_firmware(int fd) {
    if (!(err = check_fmhdr(filebuf, filesize+sizeof(it)))) {
      mdul_hdr_t * mdl;
      for (int i = 0; i < it.num_mduls && !err; ++i) {
+
        if (gV > 1) printf("\n\n--- MODULE %d ---\n",i);
        if (MUST_DUMP) {
          if (curDumpFd) xclose(&curDumpFd);
          if (MUST_SPLIT_HDR && curHdrDumpFd) xclose(&curHdrDumpFd);
          currentDumpFd(); // to reset inner variable
          createDumpFd(mdl);
-       }
-       whereami(fd);
        mdl = (mdul_hdr_t*) (filebuf + it.fm_hdr_len + (i * it.mdul_hdr_len));
+       whereami(fd);
        err = check_mdul_hdr(fd, mdl);
-	
+
+       }
      }
    }
    free(filebuf);

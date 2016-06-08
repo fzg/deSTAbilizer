@@ -15,7 +15,8 @@ t_arg args[] = {
 {0, 0, &setSplitHdr, 0, "-s"},
 {1, 0, &setCfg, 0, "--cfg"},
 {0, 0, &setNoDecode, 0, "--no-decode"},
-{0, 0, &setNoEncode, 0, "--no-encode"}
+{0, 0, &setNoEncode, 0, "--no-encode"},
+{1, 0, &setCkConf, 0, "--ckconf"}
 };
 
 t_default_arg defaults[] = {

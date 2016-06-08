@@ -23,7 +23,7 @@ int main(int c, const char *v[]) {
   __progname = v[0];
   err = parse_args(c, v);
 
-  if (!gIn) return usage();
+//  if (!gIn) return usage();
 
   if (gMode == OPT_CHECK) {  // neither --dump nor --build, just check
     err = opCheck();

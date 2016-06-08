@@ -28,6 +28,8 @@ INSERTONEND:
 
 #define NVRAM_BASE 0xc0
 #define NVRAM_KEYSTORE_OFF (20 + NVRAM_BASE)
+#define SWAP32(x) do { uint32_t tmp = (htonl((x))); (x) = tmp;} while(0)
+
 
 /*
 static void xputs(const char *str, const char sep) {
@@ -39,12 +41,15 @@ static void xputs(const char *str, const char sep) {
 */
 
 int verify_crc(char *buffer, size_t length) {
-  uint8_t file = *(uint8_t *)(buffer+8);
-  uint8_t comp = compute_crc(buffer, length);
+  char *nvramsec = buffer + NVRAM_BASE;
+
+  uint8_t file = *(uint8_t *)(nvramsec+8);
+  uint8_t comp = compute_crc(nvramsec, length);
   return (!(comp == file));
 }
 
-uint8_t compute_crc(char *buffer, size_t length) {
+uint8_t compute_crc(char *buffer, size_t length) { // crc of nvram section
+  buffer += NVRAM_BASE;
   if (strncmp(buffer, "HSLF", 4)) {
     printf("Bad magic\n abort\n");
   }
@@ -52,7 +57,7 @@ uint8_t compute_crc(char *buffer, size_t length) {
   u_short rounded = (last_entry+3) & 0xFFFFFFFC;
   if (gV > 2) printf("Rounded %d to %d\n", *(u_short *)(buffer+4), rounded);
   uint8_t comp = *(uint8_t *)(buffer+8);
-  unsigned char final = 0;
+  unsigned char final = 256;
   uint8_t crc = hndcrc8((unsigned char *)buffer+9, 11, 255);
   uint8_t c2c = hndcrc8((unsigned char *)buffer+20, rounded-20, ((crc << 16) & 0xFF0000) >> 16);
   final |= c2c;
@@ -147,6 +152,57 @@ int nvram_set(char *buffer, const char *key, const char *value) {
     return 0;
  }
  return -1;
+}
+
+
+int fixfile(uint8_t *buf, int size) {
+  unsigned int version;//, crc;
+  uint8_t mycrc, crc;
+  uint32_t dsize;
+
+  version = *(uint8_t*)buf + 0;
+  if (version != 3) die("Only v3 supported");
+
+  dsize = *(uint32_t*)buf +0xc;
+  uint16_t tmp[2];
+  tmp[0] = *(uint16_t*) buf + 0xe;
+  printf("%d %x\n", tmp[0]);
+  memcpy(&tmp, buf+0xc, 4);
+  SWAP32(tmp);
+  dsize = (uint32_t) tmp;
+  crc = buf[7];				// 01 0x04  header crc(int)
+  for (int i = 4; i < 8; ++i) buf[i] = 0; // setting the four bytes of crc to null
+
+  mycrc = hndcrc8(buf, 128, 0); // check crc of first 128 bytes
+//  crc = ((crc & 0xFF0000) >> 8 ) | (crc >> 24) | (crc << 24) | ((uint16_t)(crc & 0xFF00) << 8);
+  printf("mycrc %d, filecrc %d\n", mycrc, crc);
+
+//  if (1 ||gV) printf("Header crc: %d\n", mycrc);
+  if (mycrc != crc) die("Header CRC mismatch");
+  crc = buf[0x1b];
+  buf[0x1b] = 0;
+//  for (int i = 0x1b; i < 0x1f; ++i) buf[i] = 0; // setting the four bytes of crc to null
+
+  char nsecs = buf[0x40];
+  printf("File has %d sections and is %zu bytes long.\n", nsecs, dsize);
+  uint8_t init_crc = 0;
+  uint32_t section_size;
+  uint8_t *ptr = buf + 128; // point to first section header
+  mycrc = hndcrc8(ptr, tmp[0], 0);
+  printf("SECTIONS: mycrc %d, filecrc %d\n", mycrc, crc);
+
+/*  for (int i = 0; i < nsecs; ++i) {
+   section_size = (*(uint32_t*)ptr);
+//   ntohs(section_size);
+   if (gV) printf("Checking section %d of size %zu (0x%x)\n", i, section_size, section_size);
+   mycrc = hndcrc8(ptr, 64, init_crc);
+  // TODO: Read section_size ? FIXME: we force it to 0x8000
+  // section_size = 0x8000;
+   init_crc = hndcrc8(ptr +64, section_size, mycrc);
+//  mycrc = ((mycrc & 0xFF0000) >> 8 ) | (mycrc >> 24) | (mycrc << 24) | ((uint16_t)(mycrc & 0xff0000) << 8);
+    ptr += section_size + 0x40;
+  }
+  printf("SECTIONS: mycrc %d, filecrc %d\n", mycrc, crc); */
 }
 
 

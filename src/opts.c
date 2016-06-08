@@ -60,6 +60,7 @@ int setOverrideDefaults(char **p) {
 }
 
 int setCkConf(char **p) {
+  xstrdup(&gCfg, *p);
   gMode |= OPT_CKCONF;
   return 0;
 }
