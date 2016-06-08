@@ -158,23 +158,24 @@ int nvram_set(char *buffer, const char *key, const char *value) {
 int fixfile(uint8_t *buf, int size) {
   unsigned int version;//, crc;
   uint8_t mycrc, crc;
-  uint32_t dsize;
+  uint64_t dsize;
 
   version = *(uint8_t*)buf + 0;
   if (version != 3) die("Only v3 supported");
 
-  dsize = *(uint32_t*)buf +0xc;
-  uint16_t tmp[2];
-  tmp[0] = *(uint16_t*) buf + 0xe;
-  printf("%d %x\n", tmp[0]);
-  memcpy(&tmp, buf+0xc, 4);
-  SWAP32(tmp);
-  dsize = (uint32_t) tmp;
+  uint16_t tmp[4];
+  for (int i = 0xc; i < 0xf; ++i) tmp[i-0xc] = buf[i];
+  uint64_t blah;
+  blah = (((tmp[1]&0xff) << 8) | tmp[0]); // blah is good
+  dsize = ((tmp[3]&0xff) << 8) | tmp[2];
+  dsize = ((dsize & 0xffff) << 8 ) << 8 | blah;
+
+  printf("dsize is %d\n", dsize);
+
   crc = buf[7];				// 01 0x04  header crc(int)
   for (int i = 4; i < 8; ++i) buf[i] = 0; // setting the four bytes of crc to null
 
   mycrc = hndcrc8(buf, 128, 0); // check crc of first 128 bytes
-//  crc = ((crc & 0xFF0000) >> 8 ) | (crc >> 24) | (crc << 24) | ((uint16_t)(crc & 0xFF00) << 8);
   printf("mycrc %d, filecrc %d\n", mycrc, crc);
 
 //  if (1 ||gV) printf("Header crc: %d\n", mycrc);
@@ -184,25 +185,12 @@ int fixfile(uint8_t *buf, int size) {
 //  for (int i = 0x1b; i < 0x1f; ++i) buf[i] = 0; // setting the four bytes of crc to null
 
   char nsecs = buf[0x40];
-  printf("File has %d sections and is %zu bytes long.\n", nsecs, dsize);
+  printf("File has %d sections and is %d bytes long.\n", nsecs, dsize);
   uint8_t init_crc = 0;
   uint32_t section_size;
   uint8_t *ptr = buf + 128; // point to first section header
-  mycrc = hndcrc8(ptr, tmp[0], 0);
+  mycrc = hndcrc8(ptr, dsize, 0);
   printf("SECTIONS: mycrc %d, filecrc %d\n", mycrc, crc);
-
-/*  for (int i = 0; i < nsecs; ++i) {
-   section_size = (*(uint32_t*)ptr);
-//   ntohs(section_size);
-   if (gV) printf("Checking section %d of size %zu (0x%x)\n", i, section_size, section_size);
-   mycrc = hndcrc8(ptr, 64, init_crc);
-  // TODO: Read section_size ? FIXME: we force it to 0x8000
-  // section_size = 0x8000;
-   init_crc = hndcrc8(ptr +64, section_size, mycrc);
-//  mycrc = ((mycrc & 0xFF0000) >> 8 ) | (mycrc >> 24) | (mycrc << 24) | ((uint16_t)(mycrc & 0xff0000) << 8);
-    ptr += section_size + 0x40;
-  }
-  printf("SECTIONS: mycrc %d, filecrc %d\n", mycrc, crc); */
 }
 
 
