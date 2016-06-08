@@ -1,3 +1,9 @@
+The router has HTTPS enabled. TODO:
+ Take the http only (_yyy) config file
+ Set https_enable=0
+ Check diff in crc
+  -> Done and fixed
+
 -> List modules types.
 
 -> (fix checksum in mdl_hdr?) <- low priority since we abort on magic mismatch or digest mismatch
@@ -10,3 +16,67 @@
 
 -> finish implementing -f
    ( it doesn't refuse to overwrite when no -f given )
+
+-> use the squashfs3.4 tools and try to get to rebuild correctly
+
+
+inside fragment 0 :
+
+DECIMAL       HEXADECIMAL     DESCRIPTION
+--------------------------------------------------------------------------------
+0             0x0             uImage header, header size: 64 bytes, header CRC: 0x95777A86, created: Sun Feb  7 06:28:15 2106, image size: 1572736 bytes, Data Address: 0x20008000, Entry Point: 0x20008000, data CRC: 0xC3E93103, OS: Linux, CPU: ARM, image type: OS Kernel Image, compression type: none, image name: "SP2Xcybertan_rom_bin"
+13204         0x3394          gzip compressed data, maximum compression, from Unix, last modified: Sun Sep  6 02:54:59 2015
+1572800       0x17FFC0        uImage header, header size: 64 bytes, header CRC: 0xAF10FEE9, created: Sun Feb  7 06:28:15 2106, image size: 8896512 bytes, Data Address: 0x0, Entry Point: 0x0, data CRC: 0xCCF804FC, OS: Linux, CPU: ARM, image type: Filesystem Image, compression type: none, image name: "SP2Xcybertan_rom_bin"
+1572864       0x180000        Squashfs filesystem, little endian, non-standard signature,  version 3.1, size: 8896036 bytes,  1058 inodes, blocksize: 131072 bytes, created: Mon Oct 26 02:43:08 2015
+
+-> detect uImage headers
+  -> ti keystone GPH
+"The two stage SPI flash u-boot image consists of a first stage u-boot SPL binary with a header and a footer,
+ and a second stage full u-boot binary."
+Using a combined single GPH image (u-boot-spi-<soc>-evm.gph from release) to program the SPI NOR flash. Where <soc> is k2hk/k2e/k2l. 
+
+
+http://processors.wiki.ti.com/index.php/MCSDK_UG_Chapter_Tools#Programming_SPI_NOR_flash_with_U-Boot_GPH_image
+
+----
+
+@@ -543,7 +543,10 @@ $(obj)u-boot-spi.gph:	$(obj)u-boot.img $(obj)spl/u-boot-spl.bin
+ $(obj)u-boot-nand.gph:	$(obj)u-boot.bin
+ 		$(obj)tools/mkimage -A $(ARCH) -T gpimage -C none \
+ 			-a $(CONFIG_SYS_TEXT_BASE) -e $(CONFIG_SYS_TEXT_BASE) \
+-			-n U-Boot -d $(obj)u-boot.bin $@
++			-n U-Boot -d $(obj)u-boot.bin $(obj)gph-u-boot.bin
++		@dd if=/dev/zero of=$(obj)zero.bin bs=8 count=1 2>/dev/null
++		@cat $(obj)gph-u-boot.bin $(obj)zero.bin > $@
++		@rm $(obj)zero.bin
+
+----
+a-> params.addr
+e-> params.eflag
+n-> params.imagename
+u-boot-spl.bin          [ SPL = Secondary Program Loader ] see http://www.denx.de/wiki/pub/U-Boot/MiniSummitELCE2013/tpl-presentation.pdf
+
+ see maybe layout at http://www.wiki.xilinx.com/U-Boot+Secondary+Program+Loader
+
+mkimage -A arm -T gpimage -C
+
+
+
+
+tracing mkimage -l:
+imagetool_verify_print_header
+l53
+-> gpimage_print_header
+
+
+  
+see http://mailman.uclinux.org/pipermail/uclinux-dev/2013-January/052328.html
+
+to unsquash: /usr/local/bin/sasquatch -le
+
+
+conf ida avec qemu 
+http://www.hexblog.com/?p=111
+integrer 
+https://github.com/nihilus/IDASimulator
+
