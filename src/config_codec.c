@@ -49,7 +49,7 @@ int verify_crc(char *buffer, size_t length) {
 }
 
 uint8_t compute_crc(char *buffer, size_t length) { // crc of nvram section
-  buffer += NVRAM_BASE;
+//  buffer += NVRAM_BASE;
   if (strncmp(buffer, "HSLF", 4)) {
     printf("Bad magic\n abort\n");
   }
@@ -147,55 +147,106 @@ INSERTONEND:
 }
 
 int nvram_set(char *buffer, const char *key, const char *value) {
+ if (!value) return 0; // no set to do
  if (!_nvram_set(buffer, 0x8000, key, value)) {
-    buffer[0xc8] = compute_crc(buffer+NVRAM_BASE, 0x8000);
+    if (!(gMode & OPT_NOENC)) {
+      puts("updating crc!");
+      buffer[0xc8] = compute_crc(buffer+NVRAM_BASE, 0x8000);
+    }
+    else puts("Warning: not updating crc\n");
     return 0;
  }
  return -1;
 }
 
-
-int fixfile(uint8_t *buf, int size) {
-  unsigned int version;//, crc;
+int checkfile(uint8_t *buf, int size) {
+  unsigned int version;
   uint8_t mycrc, crc;
-  uint64_t dsize;
+  uint64_t hisize, losize;
 
   version = *(uint8_t*)buf + 0;
   if (version != 3) die("Only v3 supported");
 
   uint16_t tmp[4];
   for (int i = 0xc; i < 0xf; ++i) tmp[i-0xc] = buf[i];
-  uint64_t blah;
-  blah = (((tmp[1]&0xff) << 8) | tmp[0]); // blah is good
-  dsize = ((tmp[3]&0xff) << 8) | tmp[2];
-  dsize = ((dsize & 0xffff) << 8 ) << 8 | blah;
+  losize = (((tmp[1]&0xff) << 8) | tmp[0]);
+  hisize = ((tmp[3]&0xff) << 8) | tmp[2];
+  hisize = ((hisize & 0xffff) << 8 ) << 8 | losize;
 
-  printf("dsize is %d\n", dsize);
 
-  crc = buf[7];				// 01 0x04  header crc(int)
-  for (int i = 4; i < 8; ++i) buf[i] = 0; // setting the four bytes of crc to null
-
+  crc = buf[7];                         // 01 0x04  header crc(int)
+  buf[7] = 0;
   mycrc = hndcrc8(buf, 128, 0); // check crc of first 128 bytes
-  printf("mycrc %d, filecrc %d\n", mycrc, crc);
+ // buf[7] = crc;
+  if (mycrc != crc) {
+    puts("Header CRC mismatch");
+    return -1;
+  }
+  printf("Header CRC: %d -> %d\n", crc, mycrc);
 
-//  if (1 ||gV) printf("Header crc: %d\n", mycrc);
-  if (mycrc != crc) die("Header CRC mismatch");
   crc = buf[0x1b];
   buf[0x1b] = 0;
-//  for (int i = 0x1b; i < 0x1f; ++i) buf[i] = 0; // setting the four bytes of crc to null
 
   char nsecs = buf[0x40];
-  printf("File has %d sections and is %d bytes long.\n", nsecs, dsize);
+  printf("File has %d sections and is %d bytes long.\n", nsecs, hisize);
   uint8_t init_crc = 0;
   uint32_t section_size;
   uint8_t *ptr = buf + 128; // point to first section header
-  mycrc = hndcrc8(ptr, dsize, 0);
-  printf("SECTIONS: mycrc %d, filecrc %d\n", mycrc, crc);
+  mycrc = hndcrc8(ptr, hisize, 0);
+  buf[0x1b] = crc;
+  buf[7] = crc;
+
+  printf("File CRC: %d -> %d\n", crc, mycrc);
+
+  if (mycrc != crc) {
+    printf("File CRC mismatch (Excepted %d, Got %d)\n", crc, mycrc);
+    return -1;
+  }
+  return 0;
+}
+
+
+int fixfile(uint8_t *buf, int size) {
+  unsigned int version;
+  uint8_t mycrc, crc, xt;
+  uint64_t hisize, losize;
+
+  buf[0] = 3; // set version
+  uint16_t tmp[4];
+  for (int i = 0xc; i < 0xf; ++i) tmp[i-0xc] = buf[i];
+  losize = (((tmp[1]&0xff) << 8) | tmp[0]);
+  hisize = ((tmp[3]&0xff) << 8) | tmp[2];
+  hisize = ((hisize & 0xffff) << 8 ) << 8 | losize;
+
+  xt = buf[0x1b];
+  buf[0x1b] = 0;
+
+
+  crc = xt;
+  char nsecs = buf[0x40];
+  uint8_t init_crc = 0;
+  uint32_t section_size;
+  uint8_t *ptr = buf + 128; // point to first section header
+  mycrc = hndcrc8(ptr, hisize, 0);
+  buf[0x1b] = mycrc;
+  printf("File CRC updated (Was %d, Is %d)\n", crc, mycrc);
+
+
+//  buf[0] = 0;
+  crc = buf[7];                         // 01 0x04  header crc(int)
+  buf[7] = 0;
+  mycrc = hndcrc8(buf, 128, 0); // check crc of first 128 bytes
+  printf("Header CRC: %d -> %d\n", crc, mycrc);
+
+  buf[7] = mycrc;
+  buf[0] = 3;
+
+  return 0;
 }
 
 
 char *encode(char *buf, int size) {
- int i = 0;
+ int i = NVRAM_BASE; size -= NVRAM_BASE;
  do {
   buf[i] = ~(((buf[i]&3) << 6) | ((unsigned int)(unsigned char)buf[i] >> 2));
   ++i;
@@ -204,7 +255,7 @@ char *encode(char *buf, int size) {
 }
 
 char *decode(char *buf, int size) {
- int i = 0;
+ int i = NVRAM_BASE; size -= NVRAM_BASE;
  do {
   buf[i] = ~(((unsigned int)(unsigned char)(buf[i]) >> 6) | 4 * buf[i]);
   ++i;

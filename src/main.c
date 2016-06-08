@@ -1,6 +1,6 @@
 #include "desta.h"
 
-char gF = 0, gV = 0, gMode = OPT_CHECK;
+char gF = 0, gV = 0, gMode = 0;
 char *gIn = 0, *gOut = 0, *gCfg = 0;
 const char *__progname = 0;
 int usage() {
@@ -23,9 +23,10 @@ int main(int c, const char *v[]) {
   __progname = v[0];
   err = parse_args(c, v);
 
-//  if (!gIn) return usage();
+  if (!gMode) return usage();
 
-  if (gMode == OPT_CHECK) {  // neither --dump nor --build, just check
+//  printf("gMode %x\n", gMode);
+  if (gMode & OPT_CHECK) {  // neither --dump nor --build, just check
     err = opCheck();
   }
   if (gMode & OPT_DUMP) {

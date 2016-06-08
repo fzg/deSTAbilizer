@@ -21,7 +21,8 @@ t_arg args[] = {
 
 t_default_arg defaults[] = {
 {ARG(1), 0, "firm.bin"},
-{ARG(2), 0, "baked.bin"}
+{ARG(2), 0, "baked.bin"},
+{ARG(7), 0, "phony"}
 //{ARG(2), 1, "admin"},
 //{ARG(12), 0, "127.0.0.1"},
 //{ARG(12), 1, "8080"}
@@ -42,6 +43,10 @@ void override_default_arg(const t_arg *a, int i, char *val) {
 const t_arg *match_arg(const char *a) {
   int i;
   if (gV > 2) printf("[Match arg]\t\"%s\"\n\t\t->", a);
+  if (!a) {
+    puts("match_arg called with null arg!");
+    return (t_arg*) NULL;
+  }
   for (i = 0; i < sizeof(args)/sizeof(t_arg); ++i) {
 //   printf("%i %i strcmp %s %s\n", i, sizeof(args)/sizeof(t_arg), args[i].aname, a);
    if(!strcmp(args[i].aname, a)) {
@@ -61,7 +66,8 @@ char isOp(const char **a) {
 
 char *get_default(const t_arg *a, int i) {
   t_default_arg *p = &defaults[0];
-  while (p && a != p->a && p->i != i);
+  while (p && a != p->a /*&& p->i != i*/) ++p;
+  puts("a");
   if (p && p->i == i) {
 	return (p->val);
   }
@@ -84,23 +90,28 @@ int parse_arg(const char **v, int i, int *err) {
 //       chopper le default(overridable dans les appels precedents)[cmd][i]
 //	 return le callback
   if (a->ops_n) {
-   if (gV > 2) printf("[ParseArg]\tAllocated %ldbytes\n", SZ_APTR);
+   if (gV > 2) printf("[ParseArg]\tAllocated %ld bytes\n", SZ_APTR);
    xmalloc((void*)(&aptr), SZ_APTR);
    memset(aptr, 0, SZ_APTR);
   }
+  char is_op;
   while (n-1 < a->ops_n) {
    ++ consumed;
-   if ((!v[i+n] || isOp(&v[i+n]))&& n-1 < a->ops_m) {
+   if ((!v[i+n] || (is_op = isOp(&v[i+n])) )&& n-1 < a->ops_m) {
     printf("[ParseArg]\tMissing mandatory argument for %s\n", a->aname);
     exit(1);
    }
+   if ( is_op && (n > a->ops_m)) {
+    puts("[ParseArg]\tOOPS GOT OP INSTEAD OF OPTIONAL OPERAND");
+   }
    //xstrdup(&aptr[n-1], v[i+n]);
-   if ( n -1 >= a->ops_m && isOp(&(v[i+n]))) {
+   if ( n -1 < a->ops_m && is_op ) {
     puts("[ParseArg]\tOOPS GOT OP INSTEAD OF OPERAND");
     *err = 2; return(1);
    }
-   if (v[i+n]) xstrdup(&aptr[n-1], v[i+n]); else {
+   if (v[i+n] && !is_op) xstrdup(&aptr[n-1], v[i+n]); else {
      xstrdup(&(aptr[n-1]), get_default(a, n-1));
+     --consumed;
    }
   ++n;
   }
